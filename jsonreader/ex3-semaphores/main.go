@@ -7,8 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -18,12 +18,14 @@ type Task struct {
 	Role int    `json:"role,omitempty"`
 }
 
-func jsonReader(filename string, results chan Task) error {
-
+func jsonReader(wg *sync.WaitGroup, sem *semaphore.Weighted, filename string, results chan Task, errs chan error) {
+	fmt.Printf("working on %s \n", filename)
+	defer wg.Done()
+	defer sem.Release(1)
 	file, err := os.Open(filename) // Change the filename as needed
 	if err != nil {
-		fmt.Println("could not open the file")
-		return err
+		errs <- err
+		return
 	}
 	// Ensure the file is closed after processing
 	// Move this line right after opening the file
@@ -31,54 +33,71 @@ func jsonReader(filename string, results chan Task) error {
 	// Check if the file is empty
 	stat, err := file.Stat()
 	if err != nil {
-		return err
+		errs <- err
+		return
 	}
 	if stat.Size() == 0 {
-		return fmt.Errorf("file is empty %s", filename)
+		errs <- fmt.Errorf("file %s is empty", filename)
+		return
 	}
 
 	decoder := json.NewDecoder(file)
 	var tasks []Task
 	if err := decoder.Decode(&tasks); err != nil {
 		if err == io.EOF {
-			// Ignore EOF errors for empty files
-			return nil
+			errs <- fmt.Errorf("failed to decode JSON from file %s: %w", filename, err)
+			return
 		}
-		return err
+		return
+
 	}
 	for _, task := range tasks {
 		results <- task
 	}
-	return nil
 }
 
 func main() {
-	files := []string{"./jsonreader/ex3-semaphores/data/file.json", "./jsonreader/ex2/data/file2.json", "./jsonreader/ex2/data/file3.json", "/jsonreader/ex2/data/file4.json"}
+	files := []string{"./jsonreader/ex3-semaphores/data/file.json", "./jsonreader/ex3-semaphores/data/file2.json", "./jsonreader/ex3-semaphores/data/file3.json", "/jsonreader/ex3-semaphores/data/file4.json"}
 	workerpool := 2
-	results := make(chan Task, 50)
+	results := make(chan Task)
+	// results := make(chan Task, 50) // when you know your record size
+	errs := make(chan error, len(files))
+
 	sem := semaphore.NewWeighted(int64(workerpool))
-	errg, ctx := errgroup.WithContext(context.Background())
-	for i := range len(files) {
+	ctx := context.Background()
+
+	var wg sync.WaitGroup
+	var wg1 sync.WaitGroup
+
+	// Goroutine to collect results without knowing the buffer size
+
+	var res []Task
+
+	wg1.Add(1)
+	go func() {
+		defer wg1.Done()
+		for task := range results {
+			res = append(res, task)
+		}
+		fmt.Printf("Number of tasks processed: %d\n", len(res))
+	}()
+
+	for _, file := range files {
 		if err := sem.Acquire(ctx, 1); err != nil {
 			log.Fatal(err)
 		}
-		errg.Go(func() error {
-			defer sem.Release(1)
-			return jsonReader(files[i], results)
-		})
+		wg.Add(1)
+		go jsonReader(&wg, sem, file, results, errs)
 
 	}
-	go func() {
-		err := errg.Wait()
-		if err != nil {
-			log.Fatal(err)
-		}
-		close(results)
-	}()
-	var res []Task
-	for task := range results {
-		res = append(res, task)
-	}
+	wg.Wait()
+	close(results)
+	wg1.Wait()
+	close(errs)
+
 	fmt.Println(len(res))
+	for err := range errs {
+		fmt.Println(err)
+	}
 
 }
