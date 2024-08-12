@@ -33,6 +33,7 @@ func jsonReader(wg *sync.WaitGroup, work chan string, results chan Task, errs ch
 				return
 			}
 			if stat.Size() == 0 {
+				errs <- fmt.Errorf("file %s is empty", filename)
 				return // Skip empty files
 			}
 
@@ -44,6 +45,12 @@ func jsonReader(wg *sync.WaitGroup, work chan string, results chan Task, errs ch
 					return
 				}
 				errs <- err
+				return
+			}
+			fmt.Println("lent of tasks", tasks)
+			if len(tasks) == 0 {
+				fmt.Println("file empty")
+				errs <- fmt.Errorf("file is empty")
 				return
 			}
 			for _, task := range tasks {

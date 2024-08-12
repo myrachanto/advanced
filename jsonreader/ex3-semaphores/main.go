@@ -22,18 +22,19 @@ func jsonReader(wg *sync.WaitGroup, sem *semaphore.Weighted, filename string, re
 	fmt.Printf("working on %s \n", filename)
 	defer wg.Done()
 	defer sem.Release(1)
-	file, err := os.Open(filename) // Change the filename as needed
+	file, err := os.Open(filename)
 	if err != nil {
-		errs <- err
+		errs <- fmt.Errorf("failed to open file %s: %w", filename, err)
 		return
 	}
+	defer file.Close()
 	// Ensure the file is closed after processing
 	// Move this line right after opening the file
 	defer file.Close()
 	// Check if the file is empty
 	stat, err := file.Stat()
 	if err != nil {
-		errs <- err
+		errs <- fmt.Errorf("failed to stat file %s: %w", filename, err)
 		return
 	}
 	if stat.Size() == 0 {
@@ -50,6 +51,10 @@ func jsonReader(wg *sync.WaitGroup, sem *semaphore.Weighted, filename string, re
 		}
 		return
 
+	}
+	if len(tasks) == 0 {
+		errs <- fmt.Errorf("file is empty")
+		return
 	}
 	for _, task := range tasks {
 		results <- task

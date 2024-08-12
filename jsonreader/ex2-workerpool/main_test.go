@@ -105,8 +105,8 @@ func TestJsonReader_EmptyFile(t *testing.T) {
 		t.Errorf("Unexpected result received")
 	}
 
-	if len(errs) > 0 {
-		t.Errorf("Unexpected error: %v", <-errs)
+	if len(errs) == 0 {
+		t.Errorf("expected an en empty file error")
 	}
 }
 
