@@ -56,7 +56,7 @@ func jsonReader(wg *sync.WaitGroup, work chan string, results chan Task, errs ch
 
 func main() {
 	var wg sync.WaitGroup
-	files := []string{"./workerpool1/ex2/data/file.json", "./workerpool1/ex2/data/file2.json", "./workerpool1/ex2/data/file3.json", "/workerpool1/ex2/data/file4.json"}
+	files := []string{"./jsonreader/ex2-workerpool/data/file.json", "./jsonreader/ex2-workerpool/data/file2.json", "./jsonreader/ex2-workerpool/data/file3.json", "/jsonreader/ex2-workerpool/data/file4.json"}
 	workerpool := 2
 	errs := make(chan error, len(files))
 	work := make(chan string, len(files))
