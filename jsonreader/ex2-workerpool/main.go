@@ -22,6 +22,7 @@ func jsonReader(wg *sync.WaitGroup, work chan string, results chan Task, errs ch
 			errs <- err
 			continue
 		}
+		fmt.Printf("working on file %s \n", filename)
 		// Ensure the file is closed after processing
 		// Move this line right after opening the file
 		func() {
@@ -47,7 +48,7 @@ func jsonReader(wg *sync.WaitGroup, work chan string, results chan Task, errs ch
 				errs <- err
 				return
 			}
-			fmt.Println("lent of tasks", tasks)
+			// fmt.Println("lent of tasks", tasks)
 			if len(tasks) == 0 {
 				fmt.Println("file empty")
 				errs <- fmt.Errorf("file is empty")
@@ -94,6 +95,6 @@ func main() {
 	for err := range errs {
 		fmt.Println(err)
 	}
-	fmt.Println(len(res))
+	fmt.Printf("A total of %d records were read from the json files", len(res))
 
 }

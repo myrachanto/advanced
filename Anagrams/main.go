@@ -28,5 +28,8 @@ func sortString(s string) string {
 
 func main() {
 	strs := []string{"eat", "tea", "tan", "ate", "nat", "bat"}
+	sort.Strings(strs)
+	fmt.Println("sorted strings:", strs)
+
 	fmt.Println(groupAnagrams(strs))
 }
